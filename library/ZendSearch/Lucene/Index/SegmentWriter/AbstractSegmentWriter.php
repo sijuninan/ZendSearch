@@ -454,7 +454,6 @@ abstract class AbstractSegmentWriter
         $termInfo = new Index\TermInfo(count($termDocs), $freqPointer, $proxPointer, $skipOffset);
 
         $this->_dumpTermDictEntry($this->_tisFile, $this->_prevTerm, $term, $this->_prevTermInfo, $termInfo);
-
         if (($this->_termCount + 1) % self::$indexInterval == 0) {
             $this->_dumpTermDictEntry($this->_tiiFile, $this->_prevIndexTerm, $term, $this->_prevIndexTermInfo, $termInfo);
 
@@ -497,22 +496,26 @@ abstract class AbstractSegmentWriter
         if (isset($prevTerm) && $prevTerm->field == $term->field) {
             $matchedBytes = 0;
             $maxBytes = min(strlen($prevTerm->text), strlen($term->text));
-            while ($matchedBytes < $maxBytes  &&
-                   $prevTerm->text[$matchedBytes] == $term->text[$matchedBytes]) {
-                $matchedBytes++;
+            if(!is_numeric($prevTerm->text)){
+                while ($matchedBytes < $maxBytes  && $prevTerm->text[$matchedBytes] == $term->text[$matchedBytes]) {
+                    $matchedBytes++;
+                }
             }
+
 
             // Calculate actual matched UTF-8 pattern
             $prefixBytes = 0;
             $prefixChars = 0;
             while ($prefixBytes < $matchedBytes) {
                 $charBytes = 1;
-                if ((ord($term->text[$prefixBytes]) & 0xC0) == 0xC0) {
-                    $charBytes++;
-                    if (ord($term->text[$prefixBytes]) & 0x20 ) {
+                if($term->text[$prefixBytes] != null) {
+                    if ((ord($term->text[$prefixBytes]) & 0xC0) == 0xC0) {
                         $charBytes++;
-                        if (ord($term->text[$prefixBytes]) & 0x10 ) {
+                        if (ord($term->text[$prefixBytes]) & 0x20) {
                             $charBytes++;
+                            if (ord($term->text[$prefixBytes]) & 0x10) {
+                                $charBytes++;
+                            }
                         }
                     }
                 }
@@ -578,7 +581,6 @@ abstract class AbstractSegmentWriter
             $cfsFile->writeLong(0); // write dummy data
             $cfsFile->writeString($fileName);
         }
-
         foreach ($this->_files as $fileName) {
             // Get actual data offset
             $dataOffset = $cfsFile->tell();
